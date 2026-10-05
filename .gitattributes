@@ -1,0 +1,10 @@
+# Keep source and documentation line endings stable across operating systems.
+.gitattributes text eol=lf
+.gitignore text eol=lf
+*.md text eol=lf
+*.py text eol=lf
+*.ipynb text eol=lf
+requirements.txt text eol=lf
+
+# Preserve downloaded and generated data bytes exactly as written.
+data/** -text

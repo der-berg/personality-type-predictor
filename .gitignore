@@ -1,0 +1,31 @@
+# Local Python environment and generated files
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+pip-cache/
+
+# Course datasets and generated tables stay local
+data/*
+!data/.gitkeep
+*.csv
+*.parquet
+*.feather
+
+# MLflow tracking state and trained model artifacts stay local
+mlflow.db
+mlruns/
+mlartifacts/
+*.joblib
+*.pkl
+*.pickle
+*.skops
+
+# Local configuration and editor files
+.env
+.env.*
+.streamlit/secrets.toml
+.vscode/
+.DS_Store
+Thumbs.db
