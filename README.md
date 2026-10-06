@@ -33,10 +33,8 @@ and `app.py`.
 
 ### 1. Clone the code and install dependencies
 
-Replace the URL below with the actual public repository URL once it exists.
-
 ```powershell
-git clone <PUBLIC_REPOSITORY_URL>
+git clone https://github.com/der-berg/personality-type-predictor.git
 cd personality-type-predictor
 py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
