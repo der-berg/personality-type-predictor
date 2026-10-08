@@ -136,14 +136,33 @@ def main() -> None:
     """Render the questionnaire and display a prediction after submission."""
 
     st.set_page_config(page_title="Personality Type Predictor", page_icon="🧭")
+    # Static presentation only; native widgets retain keyboard interaction.
+    # These Streamlit selectors are internal: recheck after framework upgrades.
+    st.markdown(
+        """<style>
+        [data-testid='stSliderTickBar'] { display: none; }
+        [data-testid='stSlider'] [data-testid='stWidgetLabel'] p {
+            font-size: 1rem;
+        }
+        .response-anchors {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            color: var(--text-color);
+            font-size: 0.875rem;
+            line-height: 1.5;
+            margin-top: -1rem;
+            margin-bottom: 0.5rem;
+        }
+        </style>""",
+        unsafe_allow_html=True,
+    )
     st.title("Personality Type Predictor")
     st.caption("An interactive course project")
     st.markdown(
-        "Answer 19 short statements about yourself and enter your age, gender, "
-        "and the hand you usually write with. A model trained on a course "
-        "dataset will show one of four possible labels. The statements come "
-        "from a shortened course version of a Big Five questionnaire about "
-        "broad personality traits."
+        "Answer 19 statements about yourself and add a few personal details. "
+        "A machine-learning model will predict one of four personality labels. "
+        "The statements are drawn from a shortened Big Five questionnaire."
     )
     st.warning(
         "For learning and demonstration only. This prediction is not a "
@@ -153,23 +172,22 @@ def main() -> None:
 
     st.markdown(
         "**How to use this app**\n\n"
-        "1. Check the example details under **About you** and change them to yours.\n"
-        "2. For each statement, choose how much you agree. Select 1 for "
-        "Disagree, 3 for Neutral, or 5 for Agree; 2 and 4 are in-between "
-        "choices. There are no right or wrong answers.\n"
-        "3. Select **Show result** below the statements."
+        "1. Enter your details under **About you**.\n"
+        "2. Move each slider to match what is usually true for you. "
+        "There are no right or wrong answers.\n"
+        "3. Select **Show result** at the end."
     )
     st.info(
-        "Example answers are already selected so you can try the app. They "
-        "are not your answers. Change the age, gender, writing hand, and "
-        "statements to match you before interpreting a result."
+        "Example answers are prefilled so you can try the app. For a result "
+        "based on your answers, review every statement and change the personal "
+        "details before selecting Show result."
     )
 
     # A regular container refreshes age feedback immediately; st.form would
     # delay it until submission. Prediction still waits for the button click.
     with st.container(border=True):
-        st.subheader("About you")
-        st.caption(
+        st.header("About you")
+        st.markdown(
             "This course app accepts ages 13–100, matching the ages observed "
             "in the cleaned training data. This does not guarantee accurate "
             "predictions at every age."
@@ -192,24 +210,31 @@ def main() -> None:
                 help="Which hand do you usually write with?",
             )
 
-        st.subheader("19 statements about you")
-        st.caption(
-            "Choose how much you agree with each statement based on what is "
-            "usually true for you. 1 means Disagree; 5 means Agree."
+        st.header("19 statements about you")
+        st.markdown(
+            "Move each slider to show how much you agree with the statement, "
+            "based on what is usually true for you."
         )
+        st.markdown(" · ".join(ANSWER_OPTIONS.values()))
         item_answers: dict[str, int] = {}
         for item in FEATURE_COLUMNS:
             if item in ITEM_PROMPTS:
-                # Display readable options while retaining integer values 1-5.
-                item_answers[item] = st.selectbox(
+                # Formatting changes the label only; raw answers remain ints 1-5.
+                item_answers[item] = st.select_slider(
                     f"{ITEM_PROMPTS[item]} ({item})",
                     options=list(ANSWER_OPTIONS),
-                    index=2,
+                    value=3,
                     format_func=ANSWER_OPTIONS.get,
                     key=item,
                 )
+                # Static endpoint text, never user-supplied HTML.
+                st.markdown(
+                    '<div class="response-anchors"><span>Disagree</span>'
+                    '<span>Agree</span></div>',
+                    unsafe_allow_html=True,
+                )
 
-        submitted = st.button("Show result")
+        submitted = st.button("Show result", type="primary")
 
     if submitted:
         # Send only raw inputs. The saved pipeline performs all learned
@@ -228,8 +253,10 @@ def main() -> None:
             return
 
         try:
-            pipeline = get_pipeline()
-            prediction = pipeline.predict(input_frame)[0]
+            # Indicate loading/prediction, not a new training run.
+            with st.spinner("Preparing your result…"):
+                pipeline = get_pipeline()
+                prediction = pipeline.predict(input_frame)[0]
         except Exception:
             # Keep technical details in local server logs, never in the UI.
             LOGGER.exception("Prediction failed")
@@ -238,16 +265,19 @@ def main() -> None:
                 "owner to check the saved model."
             )
         else:
-            st.success(f"The model predicts: **{prediction}**")
-            description = TYPE_DESCRIPTIONS.get(str(prediction))
-            if description:
-                st.markdown(f"**About this label:** {description}")
-            st.caption(
-                "This label is an educational estimate based on questionnaire "
-                "data, not a diagnosis or a complete description of you."
-            )
-            with st.expander("See answers used by the model (technical view)"):
-                st.dataframe(input_frame, hide_index=True, width="stretch")
+            with st.container(border=True):
+                st.header("Your result")
+                st.success(f"The model predicts: **{prediction}**")
+                description = TYPE_DESCRIPTIONS.get(str(prediction))
+                if description:
+                    st.markdown(f"**About this label:** {description}")
+                st.markdown(
+                    "This is an educational estimate, not a diagnosis or a "
+                    "complete description of you. Change any answer and select "
+                    "**Show result** again to get a new prediction."
+                )
+                with st.expander("See answers used by the model (technical view)"):
+                    st.dataframe(input_frame, hide_index=True, width="stretch")
 
 
 if __name__ == "__main__":

@@ -8,6 +8,18 @@ responses and three demographic fields (`age`, `gender`, and `hand`). It
 demonstrates a supervised-learning workflow from exploratory data analysis
 (EDA) through model comparison, MLflow tracking, and a local Streamlit app.
 
+The supplied, reduced Big-Five dataset contains one row per respondent:
+19 response scores, age, gender, writing hand, and the target label. Obtain
+it from the linked data folder in the setup instructions below.
+
+The selected champion is Logistic Regression. Its saved holdout macro-F1
+is **0.784** (accuracy **0.824**, 3,943 test rows). Macro-F1 is the primary
+comparison metric because it gives every class equal weight. The model
+selection section below explains the trade-off against Random Forest.
+
+To use the app, review the 19 response sliders and enter your personal
+details, then select **Show result** to see the predicted label and its limits.
+
 The prediction is an output of a model trained on this course dataset. It is
 not a clinical assessment or a diagnosis. The target labels are derived from
 personality-questionnaire information; strong performance on this dataset
@@ -31,11 +43,39 @@ The instructions below target Windows PowerShell and Python 3.12. Run commands
 from the repository root, the folder containing `eda.ipynb`, `modeling.ipynb`,
 and `app.py`.
 
-### 1. Clone the code and install dependencies
+### Clone the repository
 
 ```powershell
 git clone https://github.com/der-berg/personality-type-predictor.git
 cd personality-type-predictor
+```
+
+### 1. Obtain the course data
+
+The repository does not contain the raw or processed dataset, the course
+codebook, MLflow tracking files, or trained models. Download `data.csv` and
+`codebook.txt` from the [course data folder](https://drive.google.com/drive/folders/1KhwTPAG07EdaENW_XX9nVvKhC-DP1Ags?usp=sharing), then place them at
+exactly these paths:
+
+```text
+data/data.csv
+data/codebook.txt
+```
+
+Create the `data` folder first if it does not exist:
+
+```powershell
+New-Item -ItemType Directory -Force data
+```
+
+Access to the course folder and permission to redistribute its contents are
+different questions. This repository links to the source; it does not grant
+redistribution rights. Before submission, verify that reviewers can open the
+data link without relying on the author's session.
+
+### 2. Create the environment and install dependencies
+
+```powershell
 py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 .\.venv\Scripts\python.exe -m pip check
@@ -64,29 +104,6 @@ project-local cache (this does not change the required package versions):
 
 Keep `pip-cache/` local and out of Git. Do not disable certificate checks
 or change system-wide settings to bypass an unexplained installation error.
-
-### 2. Obtain the course data
-
-The repository does not contain the raw or processed dataset, the course
-codebook, MLflow tracking files, or trained models. Download `data.csv` and
-`codebook.txt` from the [course data folder](https://drive.google.com/drive/folders/1KhwTPAG07EdaENW_XX9nVvKhC-DP1Ags?usp=sharing), then place them at
-exactly these paths:
-
-```text
-data/data.csv
-data/codebook.txt
-```
-
-Create the `data` folder first if it does not exist:
-
-```powershell
-New-Item -ItemType Directory -Force data
-```
-
-Access to the course folder and permission to redistribute its contents are
-different questions. This repository links to the source; it does not grant
-redistribution rights. Before submission, verify that reviewers can open the
-data link without relying on the author's session.
 
 ### 3. Run EDA and create the processed dataset
 
@@ -158,8 +175,9 @@ replacement value.
 
 ## Model selection and current local evidence
 
-The saved local notebook run on 2026-10-02 reported the following **training
-cross-validation** macro-F1 scores for the best of the 20 trials per family:
+The saved notebook outputs from the controlled local reproduction report
+the following **training cross-validation** macro-F1 scores for the best
+of the 20 trials per family:
 
 | Candidate | Mean CV macro-F1 |
 |---|---:|
@@ -187,17 +205,30 @@ this course dataset. These results do not independently validate the
 questionnaire or establish reliability for other populations. The app is a
 course demonstration, not an instrument for consequential decisions.
 
+## Documentation
+
+The [project report](docs/executive-report.md) explains the main findings,
+decisions, and limitations. The [executive summary](docs/executive-summary.md)
+and its [printable PDF](docs/executive-summary.pdf) provide a compact overview.
+The notebooks remain the primary evidence for the reported results.
+
 ## Project Structure
 
 ```text
 personality-type-predictor/
 ├── .gitattributes             # Keep text-file line endings consistent.
 ├── .gitignore                 # Exclude local data, models, environments, and caches.
+├── .streamlit/
+│   └── config.toml            # Set the blue input-widget accent; no secrets.
 ├── README.md                  # Setup, reproduction steps, results, and limitations.
 ├── app.py                     # Collect questionnaire inputs and display predictions.
 ├── data/
 │   └── .gitkeep               # Keep the local data folder in the repository.
 ├── eda.ipynb                  # Inspect and clean raw data; create the processed dataset.
+├── docs/
+│   ├── executive-report.md    # Findings, model selection, and limitations.
+│   ├── executive-summary.md   # Compact project overview.
+│   └── executive-summary.pdf  # Printable executive summary.
 ├── modeling.ipynb             # Compare and tune models; track runs in MLflow.
 ├── model_loader.py            # Load the selected pipeline from the local MLflow store.
 ├── requirements.txt           # Pin Python package versions used by the project.

@@ -2,6 +2,7 @@
 
 import unittest
 from pathlib import Path
+from unittest.mock import Mock, patch
 
 from streamlit.testing.v1 import AppTest
 
@@ -63,11 +64,11 @@ class InputValidationTests(unittest.TestCase):
         for age in (12, 101):
             with self.subTest(age=age):
                 app = AppTest.from_file(str(app_path)).run(timeout=40)
-                question = next(x for x in app.selectbox if x.key == "N6")
+                question = next(x for x in app.select_slider if x.key == "N6")
                 question.set_value(4).run(timeout=40)
                 app.number_input[0].set_value(age).run(timeout=40)
                 self.assertEqual(app.number_input[0].value, age)
-                self.assertEqual(next(x for x in app.selectbox if x.key == "N6").value, 4)
+                self.assertEqual(next(x for x in app.select_slider if x.key == "N6").value, 4)
                 self.assertEqual(len(app.error), 1)
                 self.assertIn("13 to 100", app.error[0].value)
                 app.button[0].click().run(timeout=40)
@@ -89,6 +90,38 @@ class InputValidationTests(unittest.TestCase):
     def test_empty_run_id_stops_before_model_loading(self):
         with self.assertRaisesRegex(ValueError, "Champion run ID is missing"):
             get_model_uri()
+
+    def test_sliders_keep_defaults_and_raw_values_and_stop_invalid_age(self):
+        # Mock the fitted model: test UI data flow without training or MLflow.
+        pipeline = Mock()
+        pipeline.predict.return_value = ["Undercontroller"]
+        app_path = Path(__file__).resolve().parents[1] / "app.py"
+        with patch("model_loader.load_champion_pipeline", return_value=pipeline):
+            app = AppTest.from_file(str(app_path)).run(timeout=40)
+            self.assertEqual(len(app.exception), 0)
+            self.assertEqual(len(app.select_slider), 19)
+            self.assertEqual({x.key for x in app.select_slider}, set(ITEM_PROMPTS))
+            self.assertTrue(all(x.value == 3 for x in app.select_slider))
+            self.assertEqual(app.button[0].proto.type, "primary")
+            self.assertEqual(sum('class="response-anchors"' in x.value for x in app.markdown), 19)
+            app.button[0].click().run(timeout=40)
+            self.assertTrue(any(x.value == "Your result" for x in app.header))
+            frame = pipeline.predict.call_args.args[0]
+            self.assertEqual(list(frame.columns), FEATURE_COLUMNS)
+            self.assertTrue(all(frame[item].iat[0] == 3 for item in ITEM_PROMPTS))
+            for value in (1, 2, 3, 4, 5):
+                next(x for x in app.select_slider if x.key == "N6").set_value(value).run(timeout=40)
+                app.button[0].click().run(timeout=40)
+                frame = pipeline.predict.call_args.args[0]
+                self.assertEqual(frame["N6"].iat[0], value)
+                self.assertTrue(all(frame[item].iat[0] == 3 for item in ITEM_PROMPTS if item != "N6"))
+                self.assertEqual(len(app.exception), 0)
+            calls_before = pipeline.predict.call_count
+            app.number_input[0].set_value(12).run(timeout=40)
+            app.button[0].click().run(timeout=40)
+            self.assertEqual(pipeline.predict.call_count, calls_before)
+            self.assertEqual(len(app.success), 0)
+            self.assertEqual(len(app.dataframe), 0)
 
     def test_app_reports_missing_model_without_technical_details(self):
         app_path = Path(__file__).resolve().parents[1] / "app.py"

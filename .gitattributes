@@ -8,3 +8,6 @@ requirements.txt text eol=lf
 
 # Preserve downloaded and generated data bytes exactly as written.
 data/** -text
+
+# Preserve PDF bytes; line-ending conversion can invalidate their offsets.
+*.pdf binary
